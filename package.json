@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "type": "module",
+  "proxy": "http://localhost:8081",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "nodemon server.js"
@@ -18,6 +19,7 @@
     "express": "^4.21.2",
     "express-session": "^1.18.1",
     "mysql": "^2.18.1",
+    "mysql2": "^3.12.0",
     "nodemon": "^3.1.9"
   }
 }
