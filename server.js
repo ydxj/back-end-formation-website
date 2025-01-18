@@ -98,9 +98,9 @@ app.get('/formations', (req, res) => {
 
 // Route pour ajouter une formation
 app.post('/formations', (req, res) => {
-  const { titre, description, date_debut, date_fin, formateur } = req.body;
+  const { titre,duree, description, date_debut, date_fin, formateur } = req.body;
   const query = 'INSERT INTO formations (titre,duree , description, date_debut, date_fin, formateur) VALUES (?, ?, ?, ?, ?, ?)';
-  db.query(query, [titre, description, date_debut, date_fin, formateur], (err, result) => {
+  db.query(query, [titre, duree, description, date_debut, date_fin, formateur], (err, result) => {
     if (err) {
       console.error('Erreur lors de l\'ajout de la formation:', err);
       return res.status(500).json({ message: 'Erreur interne du serveur.' });
