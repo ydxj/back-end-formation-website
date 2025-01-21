@@ -50,6 +50,7 @@ app.get('/menu', (req, res) => {
     if (req.session.fullname) {
       return res.json({
         valid: true,
+        id: req.session.userId,
         username: req.session.fullname,
         role: req.session.role,
       });
@@ -77,7 +78,8 @@ app.post('/login', (req, res) => {
       const user = results[0];
       req.session.role = user.role;
       req.session.fullname = user.fullname;
-      return res.json({ Login: true, username: user.fullname, role: user.role });
+      req.session.userId = user.id;
+      return res.json({ Login: true, username: user.fullname, role: user.role,id: user.id });
     } else {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
@@ -221,6 +223,87 @@ app.delete('/employees/:id', (req, res) => {
       return res.status(500).json({ message: 'Erreur interne du serveur.' });
     }
     return res.json({ message: 'Employé supprimé avec succès.' });
+  });
+});
+
+// Route to save a formation request (inscription)
+app.post('/formation-requests', (req, res) => {
+  const { employee_id, formation_id } = req.body;
+
+  const query = 'INSERT INTO formation_requests (employee_id, formation_id) VALUES (?, ?)';
+  db.query(query, [employee_id, formation_id], (err, result) => {
+    if (err) {
+      console.error('Erreur lors de l\'inscription à la formation:', err);
+      return res.status(500).json({ message: 'Erreur interne du serveur.' });
+    }
+    return res.json({ id: result.insertId, message: 'Inscription enregistrée avec succès.' });
+  });
+});
+
+// Route to fetch all pending formation requests
+app.get('/formation-requests', (req, res) => {
+  const query = `
+    SELECT 
+      fr.id AS request_id, 
+      e.fullname AS employee_name, 
+      e.service, 
+      f.titre AS formation_title, 
+      f.date_debut, 
+      fr.status 
+    FROM formation_requests fr
+    JOIN employee e ON fr.employee_id = e.id
+    JOIN formations f ON fr.formation_id = f.id
+    WHERE fr.status = 'pending'
+  `;
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error('Erreur lors de la récupération des demandes de formation:', err);
+      return res.status(500).json({ message: 'Erreur interne du serveur.' });
+    }
+    return res.json(results);
+  });
+});
+// Route to fetch all doned pending formation requests
+app.get('/formation-requestsdone', (req, res) => {
+  const query = `
+    SELECT 
+      fr.id AS request_id, 
+      e.fullname AS employee_name, 
+      e.service, 
+      f.titre AS formation_title, 
+      f.date_debut,
+      f.date_fin,
+      fr.status 
+    FROM formation_requests fr
+    JOIN employee e ON fr.employee_id = e.id
+    JOIN formations f ON fr.formation_id = f.id
+    WHERE fr.status != 'pending'
+  `;
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error('Erreur lors de la récupération des demandes de formation:', err);
+      return res.status(500).json({ message: 'Erreur interne du serveur.' });
+    }
+    return res.json(results);
+  });
+});
+
+// Route to update the status of a formation request
+app.put('/formation-requests/:id', (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body; // Status can be 'validated' or 'rejected'
+
+  const query = 'UPDATE formation_requests SET status = ? WHERE id = ?';
+  db.query(query, [status, id], (err, result) => {
+    if (err) {
+      console.error('Erreur lors de la mise à jour de la demande de formation:', err);
+      return res.status(500).json({ message: 'Erreur interne du serveur.' });
+    }
+    if (result.affectedRows > 0) {
+      return res.json({ message: `Demande ${status === 'validated' ? 'validée' : 'refusée'} avec succès.` });
+    } else {
+      return res.status(404).json({ message: 'Demande non trouvée.' });
+    }
   });
 });
 
