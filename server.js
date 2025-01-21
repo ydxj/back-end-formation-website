@@ -156,11 +156,11 @@ app.get('/employees', (req, res) => {
 
 // Route pour ajouter un employé
 app.post('/employees', async (req, res) => {
-  const { name, email, role, password } = req.body;
+  const { name,service, email, role, password } = req.body;
 
   try {
-    const query = 'INSERT INTO employee (fullname, email, role, password) VALUES (?, ?, ?, ?)';
-    db.query(query, [name, email, role, password], (err, result) => {
+    const query = 'INSERT INTO employee (fullname, service, email, role, password) VALUES (?, ?, ?, ?, ?)';
+    db.query(query, [name,service, email, role, password], (err, result) => {
       if (err) {
         console.error('Error adding employee:', err);
         return res.json({ message: 'Server error.' });
