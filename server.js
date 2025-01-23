@@ -3,6 +3,8 @@ import mysql from 'mysql';
 import cors from 'cors';
 import session from 'express-session';
 import cookieParser from 'cookie-parser';
+import multer from "multer";
+import path from "path";
 
 const app = express();
 
@@ -28,7 +30,16 @@ app.use(
     },
   })
 );
-
+// Configuration de Multer pour upload des fichier
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "uploads/"); // Specify the folder for storing files
+  },
+  filename: (req, file, cb) => {
+    cb(null, `${Date.now()}-${file.originalname}`);
+  },
+});
+const upload = multer({ storage });
 const db = mysql.createConnection({
   host: 'localhost',
   user: 'root',
@@ -99,17 +110,53 @@ app.get('/formations', (req, res) => {
 });
 
 // Route pour ajouter une formation
-app.post('/formations', (req, res) => {
-  const { titre,duree, description, date_debut, date_fin, formateur } = req.body;
-  const query = 'INSERT INTO formations (titre,duree , description, date_debut, date_fin, formateur) VALUES (?, ?, ?, ?, ?, ?)';
-  db.query(query, [titre, duree, description, date_debut, date_fin, formateur], (err, result) => {
-    if (err) {
-      console.error('Erreur lors de l\'ajout de la formation:', err);
-      return res.status(500).json({ message: 'Erreur interne du serveur.' });
+// Add formation with file upload
+app.post("/formations", upload.single("file"), (req, res) => {
+  console.log("Body:", req.body);
+  console.log("File:", req.file); // Check if the file is coming through  
+  const { titre, duree, date_debut, date_fin, description } = req.body;
+  const file = req.file;
+  if (!file) {
+    return res.status(400).json({ message: "File upload is required." });
+  }
+  // Insert formation into the database
+  const formationQuery = "INSERT INTO formations (titre, duree, description, date_debut, date_fin) VALUES (?, ?, ?, ?, ?)";
+  db.query(formationQuery,[titre, duree, date_debut, date_fin, description],(err, formationResult) => {
+      if (err) {
+        console.error("Error adding formation:", err);
+        return res.status(500).json({ message: "Error adding formation." });
+      }
+      const formationId = formationResult.insertId;
+      // Insert file into the files table
+      const fileQuery = "INSERT INTO files (filename, filepath, formation_id) VALUES (?, ?, ?)";
+      db.query(fileQuery,[file.filename, file.path, formationId],(err, fileResult) => {
+          if (err) {
+            console.error("Error saving file:", err);
+            return res.status(500).json({ message: "Error saving file." });
+          }
+          res.json({
+            message: "Formation and file uploaded successfully.",
+            formationId,
+            fileId: fileResult.insertId,
+          });
+        }
+      );
     }
-    return res.json({ id: result.insertId, message: 'Formation ajoutée avec succès.' });
+  );
+});
+// Endpoint to retrieve the list of files
+app.get("/files", (req, res) => {
+  const query = "SELECT * FROM files";
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error("Error retrieving files from database:", err);
+      return res.status(500).json({ message: "Server error." });
+    }
+    res.json(results);
   });
 });
+// Serve uploaded files statically for downloads
+app.use("/uploads", express.static("uploads"));
 // Route pour supprimer une formation
 app.delete('/formations/:id', (req, res) => {
   const { id } = req.params;
@@ -311,6 +358,7 @@ app.get('/formation-requestsdone', (req, res) => {
     JOIN employee e ON fr.employee_id = e.id
     JOIN formations f ON fr.formation_id = f.id
     WHERE fr.status != 'pending'
+    ORDER BY request_id desc
   `;
   db.query(query, (err, results) => {
     if (err) {
