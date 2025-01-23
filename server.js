@@ -225,6 +225,39 @@ app.delete('/employees/:id', (req, res) => {
     return res.json({ message: 'Employé supprimé avec succès.' });
   });
 });
+// update user password
+app.put('/employeess/:id/password', (req, res) => {
+  const { id } = req.params;
+  const { currentPassword, newPassword } = req.body;
+
+  const getUserQuery = 'SELECT password FROM employee WHERE id = ?';
+  db.query(getUserQuery, [id], (err, results) => {
+    if (err) {
+      console.error('Error fetching user:', err);
+      return res.status(500).json({ message: 'Server error.' });
+    }
+
+    if (results.length === 0) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    const storedPassword = results[0].password;
+
+    if (storedPassword !== currentPassword) {
+      return res.status(400).json({ message: 'Current password is incorrect.' });
+    }
+
+    const updateQuery = 'UPDATE employee SET password = ? WHERE id = ?';
+    db.query(updateQuery, [newPassword, id], (err) => {
+      if (err) {
+        console.error('Error updating password:', err);
+        return res.status(500).json({ message: 'Server error.' });
+      }
+      res.json({ message: 'Password updated successfully.' });
+    });
+  });
+});
+
 
 // Route to save a formation request (inscription)
 app.post('/formation-requests', (req, res) => {
