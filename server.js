@@ -99,7 +99,12 @@ app.post('/login', (req, res) => {
 
 // Route pour récupérer les formations
 app.get('/formations', (req, res) => {
-  const query = 'SELECT * FROM formations';
+  const query = `
+    SELECT f.id, f.titre, f.duree, f.date_debut, f.date_fin, f.description,
+          fl.filename, fl.filepath
+    FROM formations f
+    LEFT JOIN files fl ON f.id = fl.formation_id
+  `;
   db.query(query, (err, result) => {
     if (err) {
       console.error('Erreur lors de la récupération des formations:', err);
@@ -114,14 +119,14 @@ app.get('/formations', (req, res) => {
 app.post("/formations", upload.single("file"), (req, res) => {
   console.log("Body:", req.body);
   console.log("File:", req.file); // Check if the file is coming through  
-  const { titre, duree, date_debut, date_fin, description } = req.body;
+  const { titre, duree, description, date_debut, date_fin } = req.body;
   const file = req.file;
   if (!file) {
     return res.status(400).json({ message: "File upload is required." });
   }
   // Insert formation into the database
   const formationQuery = "INSERT INTO formations (titre, duree, description, date_debut, date_fin) VALUES (?, ?, ?, ?, ?)";
-  db.query(formationQuery,[titre, duree, date_debut, date_fin, description],(err, formationResult) => {
+  db.query(formationQuery,[titre, duree,description, date_debut, date_fin ],(err, formationResult) => {
       if (err) {
         console.error("Error adding formation:", err);
         return res.status(500).json({ message: "Error adding formation." });
