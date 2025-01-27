@@ -395,15 +395,15 @@ app.put('/formation-requests/:id', (req, res) => {
 
 // API route to add a new event with image upload
 app.post("/events", upload.single("image"), (req, res) => {
-  const { title, description } = req.body;
+  const { title, description,Type } = req.body;
   const image = req.file ? req.file.filename : null;
 
   if (!title || !description || !image) {
     return res.status(400).send("All fields are required");
   }
 
-  const query = "INSERT INTO events (title, description, image) VALUES (?, ?, ?)";
-  db.query(query, [title, description, image], (err, results) => {
+  const query = "INSERT INTO events (title, description, image,Type) VALUES (?, ?, ?, ?)";
+  db.query(query, [title, description, image,Type], (err, results) => {
     if (err) {
       console.error(err);
       res.status(500).send("Error adding event");
@@ -436,7 +436,7 @@ app.put('/events/:id', upload.single('image'), (req, res) => {
   const image = req.file ? req.file.filename : null;
 
   const query =
-    'UPDATE events SET title = ?, description = ?, image = ? WHERE id = ?';
+    'UPDATE events SET title = ?, description = ?, image = ?, Type=? WHERE id = ?';
   db.query(query, [title, description, image, req.params.id], (err, results) => {
     if (err) return res.status(500).send(err);
     res.json({ id: req.params.id, title, description, image });
