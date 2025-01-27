@@ -395,15 +395,15 @@ app.put('/formation-requests/:id', (req, res) => {
 
 // API route to add a new event with image upload
 app.post("/events", upload.single("image"), (req, res) => {
-  const { title, description,Type } = req.body;
+  const { title, description } = req.body;
   const image = req.file ? req.file.filename : null;
 
   if (!title || !description || !image) {
     return res.status(400).send("All fields are required");
   }
 
-  const query = "INSERT INTO events (title, description, image,Type) VALUES (?, ?, ?, ?)";
-  db.query(query, [title, description, image,Type], (err, results) => {
+  const query = "INSERT INTO events (title, description, image) VALUES (?, ?, ?)";
+  db.query(query, [title, description, image], (err, results) => {
     if (err) {
       console.error(err);
       res.status(500).send("Error adding event");
@@ -449,6 +449,94 @@ app.delete('/events/:id', (req, res) => {
   db.query(query, [req.params.id], (err, results) => {
     if (err) return res.status(500).send(err);
     res.status(204).send();
+  });
+});
+// ajouter actualiter
+app.post("/add-actualiter", upload.single("image"), (req, res) => {
+  const { title, description, start_date, end_date } = req.body;
+  const image = req.file ? `/uploads/${req.file.filename}` : null; // If no file, image will be null
+  // console.log("Received event data:", { title, description, start_date, end_date, image });
+  if (!title || !description || !start_date || !end_date) {
+    return res.status(400).send("All fields are required");
+  }
+
+  const query =
+    "INSERT INTO actualiter (title, description, start_date, end_date, image) VALUES (?, ?, ?, ?, ?)";
+  db.query(query, [title, description, start_date, end_date, image], (err, result) => {
+    if (err) {
+      console.error("Error inserting event:", err.message, err.stack); // Enhanced logging
+      return res.status(500).send("Error inserting event");
+    }
+    res.status(200).send("Event added successfully");
+  });
+});
+
+
+// Route to edit an event
+app.put("/edit-actualiter/:id", upload.single("image"), (req, res) => {
+  const { title, description, start_date, end_date } = req.body;
+  const image = req.file ? `/uploads/${req.file.filename}` : req.body.image; // Keep the existing image if not updated
+
+  const query = `UPDATE actualiter SET title = ?, description = ?, start_date = ?, end_date = ?, image = ? WHERE id = ?`;
+  db.query(query, [title, description, start_date, end_date, image, req.params.id], (err, result) => {
+    if (err) {
+      console.error("Error updating event:", err);
+      return res.status(500).send("Error updating event");
+    }
+    res.status(200).send("Event updated successfully");
+  });
+});
+
+
+// Route to get all actualiter
+app.get("/get-news", (req, res) => {
+  const query = `
+    SELECT 
+    id, 
+    title, 
+    description, 
+    start_date, 
+    end_date, 
+    image,
+    CASE
+        WHEN CURDATE() < start_date THEN 'À venir'
+        WHEN CURDATE() BETWEEN start_date AND end_date THEN 'En cours'
+        ELSE 'Terminé'
+    END AS status
+    FROM actualiter
+    ORDER BY 
+        CASE
+            WHEN CURDATE() < start_date THEN 1  -- "À venir" in the front
+            WHEN CURDATE() BETWEEN start_date AND end_date THEN 2 -- "En cours" in the middle
+            ELSE 3  -- "Terminé" at the back
+        END,
+        start_date;
+
+  `;
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error("Error fetching actualiter:", err);
+      return res.status(500).send("Error fetching actualiter");
+    }
+    res.json(
+      results.map((event) => ({
+        ...event,
+        image: `http://localhost:8081${event.image}`, // Add full image URL
+      }))
+    )
+  });
+});
+
+// Route to delete an event
+app.delete("/delete-actualiter/:id", (req, res) => {
+  const eventId = req.params.id;
+  const query = "DELETE FROM actualiter WHERE id = ?";
+  db.query(query, [eventId], (err, result) => {
+    if (err) {
+      console.error("Error deleting event:", err);
+      return res.status(500).send("Error deleting event");
+    }
+    res.status(200).send("Event deleted successfully");
   });
 });
 
