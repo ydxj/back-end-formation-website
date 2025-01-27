@@ -10,7 +10,7 @@ const app = express();
 
 app.use(
   cors({
-    origin: 'http://localhost:3000', 
+    origin: '*', 
     methods: ['GET', 'POST','PUT','DELETE'],
     credentials: true, 
   })
@@ -390,6 +390,65 @@ app.put('/formation-requests/:id', (req, res) => {
     } else {
       return res.status(404).json({ message: 'Demande non trouvée.' });
     }
+  });
+});
+
+// API route to add a new event with image upload
+app.post("/events", upload.single("image"), (req, res) => {
+  const { title, description } = req.body;
+  const image = req.file ? req.file.filename : null;
+
+  if (!title || !description || !image) {
+    return res.status(400).send("All fields are required");
+  }
+
+  const query = "INSERT INTO events (title, description, image) VALUES (?, ?, ?)";
+  db.query(query, [title, description, image], (err, results) => {
+    if (err) {
+      console.error(err);
+      res.status(500).send("Error adding event");
+    } else {
+      res.status(201).send("Event added successfully");
+    }
+  });
+});
+
+// API route to get all events
+app.get("/events", (req, res) => {
+  db.query("SELECT * FROM events", (err, results) => {
+    if (err) {
+      console.error(err);
+      res.status(500).send("Error retrieving events");
+    } else {
+      res.json(
+        results.map((event) => ({
+          ...event,
+          image: `http://localhost:8081/uploads/${event.image}`, // Add full image URL
+        }))
+      );
+    }
+  });
+});
+
+// Route to edit an existing event
+app.put('/events/:id', upload.single('image'), (req, res) => {
+  const { title, description } = req.body;
+  const image = req.file ? req.file.filename : null;
+
+  const query =
+    'UPDATE events SET title = ?, description = ?, image = ? WHERE id = ?';
+  db.query(query, [title, description, image, req.params.id], (err, results) => {
+    if (err) return res.status(500).send(err);
+    res.json({ id: req.params.id, title, description, image });
+  });
+});
+
+// Route to delete an event
+app.delete('/events/:id', (req, res) => {
+  const query = 'DELETE FROM events WHERE id = ?';
+  db.query(query, [req.params.id], (err, results) => {
+    if (err) return res.status(500).send(err);
+    res.status(204).send();
   });
 });
 
