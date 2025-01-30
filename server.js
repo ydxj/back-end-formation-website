@@ -92,7 +92,7 @@ app.post('/login', (req, res) => {
       req.session.userId = user.id;
       return res.json({ Login: true, username: user.fullname, role: user.role,id: user.id });
     } else {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      return res.status(401).json({ message: 'Email ou mot de pass incorrect' });
     }
   });
 });
