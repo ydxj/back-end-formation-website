@@ -325,6 +325,37 @@ app.post('/formation-requests', (req, res) => {
   });
 });
 
+// Route to fetch formation requests from a specifiques id
+app.get('/formationR', (req, res) => {
+  const { userId } = req.query; // Utilisation de req.query pour une requête GET
+
+  if (!userId) { // Vérifier userId au lieu de id
+    return res.status(400).json({ message: 'ID de l\'employé requis.' });
+  }
+
+  const query = `
+    SELECT 
+      f.id, 
+      fr.status, 
+      f.titre AS formation_title, 
+      f.description, 
+      f.duree, 
+      f.date_debut
+    FROM formation_requests fr
+    JOIN employee e ON fr.employee_id = e.id
+    JOIN formations f ON fr.formation_id = f.id
+    WHERE fr.employee_id = ?;
+  `;
+
+  db.query(query, [userId], (err, results) => {
+    if (err) {
+      console.error('Erreur lors de la récupération des demandes de formation:', err);
+      return res.status(500).json({ message: 'Erreur interne du serveur.' });
+    }
+    return res.json(results);
+  });
+});
+
 // Route to fetch all pending formation requests
 app.get('/formation-requests', (req, res) => {
   const query = `
