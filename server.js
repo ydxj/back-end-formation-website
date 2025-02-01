@@ -340,7 +340,8 @@ app.get('/formationR', (req, res) => {
       f.titre AS formation_title, 
       f.description, 
       f.duree, 
-      f.date_debut
+      f.date_debut,
+      f.date_fin
     FROM formation_requests fr
     JOIN employee e ON fr.employee_id = e.id
     JOIN formations f ON fr.formation_id = f.id
