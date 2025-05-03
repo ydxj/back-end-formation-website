@@ -4,6 +4,7 @@ import cors from 'cors';
 import session from 'express-session';
 import cookieParser from 'cookie-parser';
 import multer from "multer";
+import bcrypt from "bcrypt"
 import path from "path";
 
 const app = express();
@@ -211,8 +212,9 @@ app.post('/employees', async (req, res) => {
   const { name,service, email, role, password } = req.body;
 
   try {
+    const hashedPassword = await bcrypt.hash(password, 10); 
     const query = 'INSERT INTO employee (fullname, service, email, role, password) VALUES (?, ?, ?, ?, ?)';
-    db.query(query, [name,service, email, role, password], (err, result) => {
+    db.query(query, [name,service, email, role, hashedPassword], (err, result) => {
       if (err) {
         console.error('Error adding employee:', err);
         return res.json({ message: 'Server error.' });
@@ -230,8 +232,9 @@ app.put('/employees/:id/password', async (req, res) => {
   const { password } = req.body;
 
   try {
+    const hashedPassword = await bcrypt.hash(password, 10); // 10 salt rounds
     const query = 'UPDATE employee SET password = ? WHERE id = ?';
-    db.query(query, [password, id], (err, result) => {
+    db.query(query, [hashedPassword, id], (err, result) => {
       if (err) {
         console.error('Error updating password:', err);
         return res.status(500).json({ message: 'Server error.' });
@@ -248,11 +251,12 @@ app.put('/employees/:id/password', async (req, res) => {
   }
 });
 // Route pour mettre à jour un employé
-app.put('/employees/:id', (req, res) => {
+app.put('/employees/:id', async (req, res) => {
   const { id } = req.params;
-  const { name, email, role } = req.body;
-  const query = 'UPDATE employee SET fullname = ?, email = ?, role = ? WHERE id = ?';
-  db.query(query, [name, email, role, id], (err, result) => {
+  const { name, email, role, password } = req.body;
+  const hashedPassword = await bcrypt.hash(password, 10); // 10 salt rounds
+  const query = 'UPDATE employee SET fullname = ?, email = ?, role = ?, password = ? WHERE id = ?';
+  db.query(query, [name, email, role, hashedPassword, id], (err, result) => {
     if (err) {
       console.error('Erreur lors de la mise à jour de l\'employé:', err);
       return res.status(500).json({ message: 'Erreur interne du serveur.' });
