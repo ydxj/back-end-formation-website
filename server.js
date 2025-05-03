@@ -75,32 +75,57 @@ app.get('/menu', (req, res) => {
   }
 });
 
+// app.post('/login', (req, res) => {
+//   const { email, password } = req.body;
+
+//   const sql = 'SELECT * FROM employee WHERE email = ?';
+//   db.query(sql, [email], async (err, results) => {
+//     if (err) {
+//       console.error('Error in /login route:', err);
+//       return res.status(500).json({ message: 'Internal server error' });
+//     }
+
+//     if (results.length === 0) {
+//       return res.status(401).json({ message: 'Email ou mot de passe incorrect' });
+//     }
+//     const user = results[0];
+//     // Compare the plaintext password with the hashed password
+//     const passwordMatch = await bcrypt.compare(password, user.password);
+//     if (passwordMatch) {
+//       req.session.role = user.role;
+//       req.session.fullname = user.fullname;
+//       req.session.userId = user.id;
+//       return res.json({ Login: true, username: user.fullname, role: user.role, id: user.id });
+//     } else {
+//       return res.status(401).json({ message: 'Email ou mot de passe incorrect' });
+//     }
+//   });
+// });
+
+
 app.post('/login', (req, res) => {
   const { email, password } = req.body;
 
-  const sql = 'SELECT * FROM employee WHERE email = ?';
-  db.query(sql, [email], async (err, results) => {
+  const sql = 'SELECT * FROM employee WHERE email = ? AND password = ?';
+
+  db.query(sql, [email, password], (err, results) => {
     if (err) {
       console.error('Error in /login route:', err);
       return res.status(500).json({ message: 'Internal server error' });
     }
 
-    if (results.length === 0) {
-      return res.status(401).json({ message: 'Email ou mot de passe incorrect' });
-    }
-    const user = results[0];
-    // Compare the plaintext password with the hashed password
-    const passwordMatch = await bcrypt.compare(password, user.password);
-    if (passwordMatch) {
+    if (results.length > 0) {
+      const user = results[0];
       req.session.role = user.role;
       req.session.fullname = user.fullname;
       req.session.userId = user.id;
-      return res.json({ Login: true, username: user.fullname, role: user.role, id: user.id });
+      return res.json({ Login: true, username: user.fullname, role: user.role,id: user.id });
     } else {
-      return res.status(401).json({ message: 'Email ou mot de passe incorrect' });
+      return res.status(401).json({ message: 'Email ou mot de pass incorrect' });
     }
   });
 });
+
 
 // Route pour récupérer les formations
 app.get('/formations', (req, res) => {
@@ -212,13 +237,32 @@ app.get('/employees', (req, res) => {
 });
 
 // Route pour ajouter un employé
+// app.post('/employees', async (req, res) => {
+//   const { name,service, email, role, password } = req.body;
+
+//   try {
+//     const hashedPassword = await bcrypt.hash(password, 10); 
+//     const query = 'INSERT INTO employee (fullname, service, email, role, password) VALUES (?, ?, ?, ?, ?)';
+//     db.query(query, [name,service, email, role, hashedPassword], (err, result) => {
+//       if (err) {
+//         console.error('Error adding employee:', err);
+//         return res.json({ message: 'Server error.' });
+//       }
+//       res.json({ id: result.insertId, message: 'Employee added successfully.' });
+//     });
+//   } catch (err) {
+//     console.error('Error : ', err);
+//     res.json({ message: 'Server error.' });
+//   }
+// });
+
+
 app.post('/employees', async (req, res) => {
   const { name,service, email, role, password } = req.body;
 
   try {
-    const hashedPassword = await bcrypt.hash(password, 10); 
     const query = 'INSERT INTO employee (fullname, service, email, role, password) VALUES (?, ?, ?, ?, ?)';
-    db.query(query, [name,service, email, role, hashedPassword], (err, result) => {
+    db.query(query, [name,service, email, role, password], (err, result) => {
       if (err) {
         console.error('Error adding employee:', err);
         return res.json({ message: 'Server error.' });
@@ -230,15 +274,40 @@ app.post('/employees', async (req, res) => {
     res.json({ message: 'Server error.' });
   }
 });
+
+
 // Route to update an employee's password
+// app.put('/employees/:id/password', async (req, res) => {
+//   const { id } = req.params;
+//   const { password } = req.body;
+
+//   try {
+//     const hashedPassword = await bcrypt.hash(password, 10); // 10 salt rounds
+//     const query = 'UPDATE employee SET password = ? WHERE id = ?';
+//     db.query(query, [hashedPassword, id], (err, result) => {
+//       if (err) {
+//         console.error('Error updating password:', err);
+//         return res.status(500).json({ message: 'Server error.' });
+//       }
+//       if (result.affectedRows > 0) {
+//         res.json({ message: 'Password updated successfully.' });
+//       } else {
+//         res.status(404).json({ message: 'Employee not found.' });
+//       }
+//     });
+//   } catch (err) {
+//     console.error('Error password:', err);
+//     res.status(500).json({ message: 'Server error.' });
+//   }
+// });
+
 app.put('/employees/:id/password', async (req, res) => {
   const { id } = req.params;
   const { password } = req.body;
 
   try {
-    const hashedPassword = await bcrypt.hash(password, 10); // 10 salt rounds
     const query = 'UPDATE employee SET password = ? WHERE id = ?';
-    db.query(query, [hashedPassword, id], (err, result) => {
+    db.query(query, [password, id], (err, result) => {
       if (err) {
         console.error('Error updating password:', err);
         return res.status(500).json({ message: 'Server error.' });
@@ -254,13 +323,31 @@ app.put('/employees/:id/password', async (req, res) => {
     res.status(500).json({ message: 'Server error.' });
   }
 });
+
 // Route pour mettre à jour un employé
-app.put('/employees/:id', async (req, res) => {
+// app.put('/employees/:id', async (req, res) => {
+//   const { id } = req.params;
+//   const { name, email, role, password } = req.body;
+//   const hashedPassword = await bcrypt.hash(password, 10); // 10 salt rounds
+//   const query = 'UPDATE employee SET fullname = ?, email = ?, role = ?, password = ? WHERE id = ?';
+//   db.query(query, [name, email, role, hashedPassword, id], (err, result) => {
+//     if (err) {
+//       console.error('Erreur lors de la mise à jour de l\'employé:', err);
+//       return res.status(500).json({ message: 'Erreur interne du serveur.' });
+//     }
+//     if (result.affectedRows > 0) {
+//       return res.json({ message: 'Employé mis à jour avec succès.' });
+//     } else {
+//       return res.status(404).json({ message: 'Employé non trouvé.' });
+//     }
+//   });
+// });
+
+app.put('/employees/:id', (req, res) => {
   const { id } = req.params;
-  const { name, email, role, password } = req.body;
-  const hashedPassword = await bcrypt.hash(password, 10); // 10 salt rounds
-  const query = 'UPDATE employee SET fullname = ?, email = ?, role = ?, password = ? WHERE id = ?';
-  db.query(query, [name, email, role, hashedPassword, id], (err, result) => {
+  const { name, email, role } = req.body;
+  const query = 'UPDATE employee SET fullname = ?, email = ?, role = ? WHERE id = ?';
+  db.query(query, [name, email, role, id], (err, result) => {
     if (err) {
       console.error('Erreur lors de la mise à jour de l\'employé:', err);
       return res.status(500).json({ message: 'Erreur interne du serveur.' });
