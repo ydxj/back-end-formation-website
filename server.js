@@ -78,22 +78,26 @@ app.get('/menu', (req, res) => {
 app.post('/login', (req, res) => {
   const { email, password } = req.body;
 
-  const sql = 'SELECT * FROM employee WHERE email = ? AND password = ?';
-
-  db.query(sql, [email, password], (err, results) => {
+  const sql = 'SELECT * FROM employee WHERE email = ?';
+  db.query(sql, [email], async (err, results) => {
     if (err) {
       console.error('Error in /login route:', err);
       return res.status(500).json({ message: 'Internal server error' });
     }
 
-    if (results.length > 0) {
-      const user = results[0];
+    if (results.length === 0) {
+      return res.status(401).json({ message: 'Email ou mot de passe incorrect' });
+    }
+    const user = results[0];
+    // Compare the plaintext password with the hashed password
+    const passwordMatch = await bcrypt.compare(password, user.password);
+    if (passwordMatch) {
       req.session.role = user.role;
       req.session.fullname = user.fullname;
       req.session.userId = user.id;
-      return res.json({ Login: true, username: user.fullname, role: user.role,id: user.id });
+      return res.json({ Login: true, username: user.fullname, role: user.role, id: user.id });
     } else {
-      return res.status(401).json({ message: 'Email ou mot de pass incorrect' });
+      return res.status(401).json({ message: 'Email ou mot de passe incorrect' });
     }
   });
 });
