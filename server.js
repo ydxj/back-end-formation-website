@@ -132,7 +132,7 @@ app.post('/login', (req, res) => {
 // Route pour récupérer les formations
 app.get('/formations', (req, res) => {
   const query = `
-    SELECT f.id, f.titre, f.duree, f.date_debut, f.date_fin, f.description, f.service,
+    SELECT f.id, f.titre, f.duree, f.date_debut, f.date_fin, f.description, f.service,f.image,
           fl.filename, fl.filepath
     FROM formations f
     LEFT JOIN files fl ON f.id = fl.formation_id
@@ -148,31 +148,44 @@ app.get('/formations', (req, res) => {
 
 // Route pour ajouter une formation
 // Add formation with file upload
-app.post("/formations", upload.single("file"), (req, res) => {
-  console.log("Body:", req.body);
-  console.log("File:", req.file); // Check if the file is coming through  
+app.post("/formations", upload.fields([
+  { name: 'file', maxCount: 1 },
+  { name: 'image', maxCount: 1 }
+]), (req, res) => {
   const { titre, duree, description, date_debut, date_fin, service } = req.body;
-  const file = req.file;
-  if (!file) {
-    return res.status(400).json({ message: "File upload is required." });
+  const files = req.files;
+  if (!files || !files.file || !files.image) {
+    return res.status(400).json({ message: "Both file and image are required." });
   }
-  // Insert formation into the database
-  const formationQuery = "INSERT INTO formations (titre, duree, description, date_debut, date_fin, service) VALUES (?, ?, ?, ?, ?, ?)";
-  db.query(formationQuery,[titre, duree,description, date_debut, date_fin, service ],(err, formationResult) => {
+  const pdfFile = files.file[0];
+  const imageFile = files.image[0];
+  const formationQuery = `
+    INSERT INTO formations (titre, duree, description, date_debut, date_fin, service, image)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `;
+  db.query(
+    formationQuery,
+    [titre, duree, description, date_debut, date_fin, service, imageFile.filename],
+    (err, formationResult) => {
       if (err) {
         console.error("Error adding formation:", err);
         return res.status(500).json({ message: "Error adding formation." });
       }
       const formationId = formationResult.insertId;
-      // Insert file into the files table
-      const fileQuery = "INSERT INTO files (filename, filepath, formation_id) VALUES (?, ?, ?)";
-      db.query(fileQuery,[file.filename, file.path, formationId],(err, fileResult) => {
+      const fileQuery = `
+        INSERT INTO files (filename, filepath, formation_id)
+        VALUES (?, ?, ?)
+      `;
+      db.query(
+        fileQuery,
+        [pdfFile.filename, pdfFile.path, formationId],
+        (err, fileResult) => {
           if (err) {
             console.error("Error saving file:", err);
             return res.status(500).json({ message: "Error saving file." });
           }
           res.json({
-            message: "Formation and file uploaded successfully.",
+            message: "Formation, image and file uploaded successfully.",
             formationId,
             fileId: fileResult.insertId,
           });
