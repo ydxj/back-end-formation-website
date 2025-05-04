@@ -132,7 +132,7 @@ app.post('/login', (req, res) => {
 // Route pour récupérer les formations
 app.get('/formations', (req, res) => {
   const query = `
-    SELECT f.id, f.titre, f.duree, f.date_debut, f.date_fin, f.description,
+    SELECT f.id, f.titre, f.duree, f.date_debut, f.date_fin, f.description, f.service,
           fl.filename, fl.filepath
     FROM formations f
     LEFT JOIN files fl ON f.id = fl.formation_id
