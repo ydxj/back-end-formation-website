@@ -65,6 +65,7 @@ app.get('/menu', (req, res) => {
         id: req.session.userId,
         username: req.session.fullname,
         role: req.session.role,
+        service: req.session.service
       });
     } else {
       return res.json({ valid: false });
@@ -117,9 +118,10 @@ app.post('/login', (req, res) => {
     if (results.length > 0) {
       const user = results[0];
       req.session.role = user.role;
+      req.session.service = user.service;
       req.session.fullname = user.fullname;
       req.session.userId = user.id;
-      return res.json({ Login: true, username: user.fullname, role: user.role,id: user.id });
+      return res.json({ Login: true, username: user.fullname, role: user.role,id: user.id, service: req.session.service });
     } else {
       return res.status(401).json({ message: 'Email ou mot de pass incorrect' });
     }
