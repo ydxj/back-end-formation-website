@@ -237,21 +237,63 @@ app.delete('/formations/:id', (req, res) => {
   });
 });
 // Route to update a formation
-app.put('/formations/:id', (req, res) => {
+app.put("/formations/:id", upload.fields([
+  { name: 'file', maxCount: 1 },
+  { name: 'image', maxCount: 1 }
+]), (req, res) => {
   const { id } = req.params;
-  const { titre,duree, description, date_debut, date_fin, formateur } = req.body;
+  const { titre, duree, description, date_debut, date_fin, service } = req.body;
+  const files = req.files;
 
-  const query = 'UPDATE formations SET titre = ?,duree = ?, description = ?, date_debut = ?, date_fin = ?, formateur = ? WHERE id = ?';
-  
-  db.query(query, [titre,duree, description, date_debut, date_fin, formateur, id], (err, result) => {
+  let imageFileName = null;
+  let pdfFile = null;
+
+  if (files.image) {
+    imageFileName = files.image[0].filename;
+  }
+
+  if (files.file) {
+    pdfFile = files.file[0];
+  }
+
+  const updateFormationQuery = `
+    UPDATE formations
+    SET titre = ?, duree = ?, description = ?, date_debut = ?, date_fin = ?, service = ?
+    ${imageFileName ? ', image = ?' : ''}
+    WHERE id = ?
+  `;
+
+  const queryParams = [
+    titre,
+    duree,
+    description,
+    date_debut,
+    date_fin,
+    service,
+    ...(imageFileName ? [imageFileName] : []),
+    id
+  ];
+
+  db.query(updateFormationQuery, queryParams, (err, result) => {
     if (err) {
-      console.error('Erreur lors de la mise à jour de la formation:', err);
-      return res.status(500).json({ message: 'Erreur interne du serveur.' });
+      console.error("Error updating formation:", err);
+      return res.status(500).json({ message: "Error updating formation." });
     }
-    if (result.affectedRows > 0) {
-      return res.json({ message: 'Formation mise à jour avec succès.' });
+
+    if (pdfFile) {
+      const fileUpdateQuery = `
+        UPDATE files SET filename = ?, filepath = ? WHERE formation_id = ?
+      `;
+
+      db.query(fileUpdateQuery, [pdfFile.filename, pdfFile.path, id], (fileErr) => {
+        if (fileErr) {
+          console.error("Error updating file:", fileErr);
+          return res.status(500).json({ message: "Error updating file." });
+        }
+        return res.json({ message: "Formation and file updated successfully." });
+      });
     } else {
-      return res.status(404).json({ message: 'Formation non trouvée.' });
+      res.json({ message: "Formation updated successfully." });
     }
   });
 });
