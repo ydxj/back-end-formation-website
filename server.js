@@ -31,6 +31,7 @@ app.use(
     },
   })
 );
+
 // Configuration de Multer pour upload des fichier
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -41,6 +42,20 @@ const storage = multer.diskStorage({
   },
 });
 const upload = multer({ storage });
+
+// Storage for profile pictures
+const profileStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "uploads/profiles");
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  },
+});
+
+const uploadProfile = multer({ storage: profileStorage });
+
 const db = mysql.createConnection({
   host: 'localhost',
   user: 'root',
@@ -65,7 +80,8 @@ app.get('/menu', (req, res) => {
         id: req.session.userId,
         username: req.session.fullname,
         role: req.session.role,
-        service: req.session.service
+        service: req.session.service,
+        image: req.session.image
       });
     } else {
       return res.json({ valid: false });
@@ -120,8 +136,9 @@ app.post('/login', (req, res) => {
       req.session.role = user.role;
       req.session.service = user.service;
       req.session.fullname = user.fullname;
+      req.session.image = user.image;
       req.session.userId = user.id;
-      return res.json({ Login: true, username: user.fullname, role: user.role,id: user.id, service: req.session.service });
+      return res.json({ Login: true, username: user.fullname, role: user.role,id: user.id, service: req.session.service,image: req.session.image });
     } else {
       return res.status(401).json({ message: 'Email ou mot de pass incorrect' });
     }
@@ -272,12 +289,12 @@ app.get('/employees', (req, res) => {
 // });
 
 
-app.post('/employees', async (req, res) => {
+app.post('/employees',uploadProfile.single('profile'), async (req, res) => {
   const { name,service, email, role, password } = req.body;
-
+  const profileImage = req.file ? req.file.path : 'uploads/profiles/defauts.png';
   try {
-    const query = 'INSERT INTO employee (fullname, service, email, role, password) VALUES (?, ?, ?, ?, ?)';
-    db.query(query, [name,service, email, role, password], (err, result) => {
+    const query = 'INSERT INTO employee (fullname, service, email, role, password, image) VALUES (?, ?, ?, ?, ?, ?)';
+    db.query(query, [name,service, email, role, password, profileImage], (err, result) => {
       if (err) {
         console.error('Error adding employee:', err);
         return res.json({ message: 'Server error.' });
@@ -316,28 +333,28 @@ app.post('/employees', async (req, res) => {
 //   }
 // });
 
-app.put('/employees/:id/password', async (req, res) => {
-  const { id } = req.params;
-  const { password } = req.body;
+// app.put('/employees/:id/password', async (req, res) => {
+//   const { id } = req.params;
+//   const { password } = req.body;
 
-  try {
-    const query = 'UPDATE employee SET password = ? WHERE id = ?';
-    db.query(query, [password, id], (err, result) => {
-      if (err) {
-        console.error('Error updating password:', err);
-        return res.status(500).json({ message: 'Server error.' });
-      }
-      if (result.affectedRows > 0) {
-        res.json({ message: 'Password updated successfully.' });
-      } else {
-        res.status(404).json({ message: 'Employee not found.' });
-      }
-    });
-  } catch (err) {
-    console.error('Error password:', err);
-    res.status(500).json({ message: 'Server error.' });
-  }
-});
+//   try {
+//     const query = 'UPDATE employee SET password = ? WHERE id = ?';
+//     db.query(query, [password, id], (err, result) => {
+//       if (err) {
+//         console.error('Error updating password:', err);
+//         return res.status(500).json({ message: 'Server error.' });
+//       }
+//       if (result.affectedRows > 0) {
+//         res.json({ message: 'Password updated successfully.' });
+//       } else {
+//         res.status(404).json({ message: 'Employee not found.' });
+//       }
+//     });
+//   } catch (err) {
+//     console.error('Error password:', err);
+//     res.status(500).json({ message: 'Server error.' });
+//   }
+// });
 
 // Route pour mettre à jour un employé
 // app.put('/employees/:id', async (req, res) => {
@@ -358,11 +375,23 @@ app.put('/employees/:id/password', async (req, res) => {
 //   });
 // });
 
-app.put('/employees/:id', (req, res) => {
+app.put('/employees/:id', uploadProfile.single('profile'), (req, res) => {
   const { id } = req.params;
   const { name, email, role } = req.body;
-  const query = 'UPDATE employee SET fullname = ?, email = ?, role = ? WHERE id = ?';
-  db.query(query, [name, email, role, id], (err, result) => {
+  const image = req.file ? req.file.path : null;
+
+  let query = 'UPDATE employee SET fullname = ?, email = ?, role = ?';
+  const values = [name, email, role];
+
+  if (image) {
+    query += ', image = ?';
+    values.push(image);
+  }
+
+  query += ' WHERE id = ?';
+  values.push(id);
+
+  db.query(query, values, (err, result) => {
     if (err) {
       console.error('Erreur lors de la mise à jour de l\'employé:', err);
       return res.status(500).json({ message: 'Erreur interne du serveur.' });
@@ -388,9 +417,10 @@ app.delete('/employees/:id', (req, res) => {
   });
 });
 // update user password
-app.put('/employeess/:id/password', (req, res) => {
+app.put('/employees/:id/password', uploadProfile.single('profile'), (req, res) => {
   const { id } = req.params;
   const { currentPassword, newPassword } = req.body;
+  const image = req.file ? req.file.path : null;
 
   const getUserQuery = 'SELECT password FROM employee WHERE id = ?';
   db.query(getUserQuery, [id], (err, results) => {
@@ -409,16 +439,28 @@ app.put('/employeess/:id/password', (req, res) => {
       return res.status(400).json({ message: 'Current password is incorrect.' });
     }
 
-    const updateQuery = 'UPDATE employee SET password = ? WHERE id = ?';
-    db.query(updateQuery, [newPassword, id], (err) => {
+    // Build the update query dynamically based on whether image is provided
+    let updateQuery = 'UPDATE employee SET password = ?';
+    const values = [newPassword];
+
+    if (image) {
+      updateQuery += ', image = ?';
+      values.push(image);
+    }
+
+    updateQuery += ' WHERE id = ?';
+    values.push(id);
+
+    db.query(updateQuery, values, (err) => {
       if (err) {
         console.error('Error updating password:', err);
         return res.status(500).json({ message: 'Server error.' });
       }
-      res.json({ message: 'Password updated successfully.' });
+      res.json({ message: 'Password and image updated successfully.' });
     });
   });
 });
+
 
 
 // Route to save a formation request (inscription)
