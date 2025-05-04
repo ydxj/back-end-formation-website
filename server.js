@@ -151,14 +151,14 @@ app.get('/formations', (req, res) => {
 app.post("/formations", upload.single("file"), (req, res) => {
   console.log("Body:", req.body);
   console.log("File:", req.file); // Check if the file is coming through  
-  const { titre, duree, description, date_debut, date_fin } = req.body;
+  const { titre, duree, description, date_debut, date_fin, service } = req.body;
   const file = req.file;
   if (!file) {
     return res.status(400).json({ message: "File upload is required." });
   }
   // Insert formation into the database
-  const formationQuery = "INSERT INTO formations (titre, duree, description, date_debut, date_fin) VALUES (?, ?, ?, ?, ?)";
-  db.query(formationQuery,[titre, duree,description, date_debut, date_fin ],(err, formationResult) => {
+  const formationQuery = "INSERT INTO formations (titre, duree, description, date_debut, date_fin, service) VALUES (?, ?, ?, ?, ?, ?)";
+  db.query(formationQuery,[titre, duree,description, date_debut, date_fin, service ],(err, formationResult) => {
       if (err) {
         console.error("Error adding formation:", err);
         return res.status(500).json({ message: "Error adding formation." });
