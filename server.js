@@ -563,7 +563,7 @@ app.put('/events/:id', upload.single('image'), (req, res) => {
   const image = req.file ? req.file.filename : null;
 
   const query =
-    'UPDATE events SET title = ?, description = ?, image = ?, Type=? WHERE id = ?';
+    'UPDATE events SET title = ?, description = ?, image = ? WHERE id = ?';
   db.query(query, [title, description, image, req.params.id], (err, results) => {
     if (err) return res.status(500).send(err);
     res.json({ id: req.params.id, title, description, image });
